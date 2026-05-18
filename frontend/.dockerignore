@@ -1,0 +1,6 @@
+# Dependencias y build local no deben copiarse a la imagen.
+node_modules
+dist
+npm-debug.log
+.env
+

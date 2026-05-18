@@ -1,0 +1,6 @@
+.agent --> Donde se guardan las Skills Antigravity
+.git --> Versiones de Github - gitignore
+.windsurf --> Donde se guardan las Skills Windsurf
+backend --> Donde se guarda todo lo relacionado con el Backend
+analisis o desarrollo --> Ciclo de vida, implementación que no es backend ni frontend
+fronted --> Donde se guarda todo lo relacionado con el Frontend

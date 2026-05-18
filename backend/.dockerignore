@@ -1,0 +1,5 @@
+# Dependencias y salidas locales no deben copiarse a la imagen.
+node_modules
+npm-debug.log
+.env
+
