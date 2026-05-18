@@ -1,0 +1,8 @@
+# Mantiene scripts Linux y configuraciones Docker con saltos LF.
+*.sh text eol=lf
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+*.conf text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+

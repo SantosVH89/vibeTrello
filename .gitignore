@@ -1,0 +1,17 @@
+# Carpetas de dependencias que se regeneran con npm install.
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Variables locales: pueden contener contraseñas o secretos.
+.env
+backend/.env
+frontend/.env
+
+# Salidas generadas por Vite, logs y ficheros temporales.
+frontend/dist/
+*.log
+coverage/
+.DS_Store
+Thumbs.db
+
