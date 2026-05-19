@@ -40,12 +40,14 @@ Acceso local recomendado:
 - Usuario inicial: `admin@local.test`
 - Password temporal: `12345678`
 
-## Despliegue con Dokploy
+## Despliegue con Coolify
 
 El proyecto incluye despliegue Docker Compose para servidor:
 
-- `docker-compose.yml`: PostgreSQL + backend + frontend.
+- `docker-compose.yml`: compose activo adaptado para Coolify.
+- `vDockploy.yml`: compose anterior conservado como referencia de Dokploy.
 - `.env.production.example`: variables que debes crear en Dokploy.
-- `Analisis/guia_despliegue_dokploy.md`: guia no tecnica del flujo GitHub -> Dokploy.
+- `Analisis/guia_despliegue_dokploy.md`: guia anterior de Dokploy.
+- `Analisis/guia_despliegue_coolify.md`: guia no tecnica para Coolify.
 
-En Dokploy, el dominio debe apuntar al servicio `frontend` y al puerto interno `80`.
+En Coolify, el dominio debe apuntar al servicio `frontend` y al puerto interno `80`.

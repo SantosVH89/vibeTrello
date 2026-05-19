@@ -1,0 +1,70 @@
+# Compose adaptado para Coolify.
+# Coolify leera este archivo desde GitHub y permitira asignar dominio al servicio "frontend" en el puerto 80.
+#
+# Flujo:
+# - frontend: Nginx sirve React y reenvia /api al backend.
+# - backend: Express aplica migraciones/seed y expone la API interna en 4000.
+# - postgres: guarda los datos de VibeTrelloCodex en un volumen persistente.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      # Variables configurables desde Coolify > Environment.
+      POSTGRES_DB: ${POSTGRES_DB:-VibeTrelloCodex}
+      POSTGRES_USER: ${POSTGRES_USER:-vibetrello}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # Coolify mantiene este volumen aunque se reconstruyan los contenedores.
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vibetrello} -d ${POSTGRES_DB:-VibeTrelloCodex}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      # Express escucha dentro de Docker en 4000.
+      PORT: 4000
+
+      # Conexion interna al servicio postgres del mismo compose.
+      DATABASE_URL: postgres://${POSTGRES_USER:-vibetrello}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-VibeTrelloCodex}
+
+      # JWT_SECRET debe definirse en Coolify como secreto largo.
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+
+      # Password temporal para usuarios creados por admin.
+      TEMPORARY_PASSWORD: ${TEMPORARY_PASSWORD:-12345678}
+
+      # Para produccion con Nginx haciendo proxy en /api, se acepta el dominio final.
+      # Si no se define, Express usara el valor por defecto de config.js.
+      CORS_ORIGIN: ${APP_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "4000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # El frontend llama a /api; Nginx lo reenvia al backend interno.
+        VITE_API_URL: /api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    expose:
+      - "80"
+
+volumes:
+  postgres_data:
+
