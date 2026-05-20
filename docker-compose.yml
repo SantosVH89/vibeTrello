@@ -57,17 +57,19 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # El frontend llama a /api; Nginx lo reenvia al backend interno.
-        VITE_API_URL: /api
+        # El frontend vive bajo /vibeTrello para compartir dominio con otras apps.
+        VITE_BASE_PATH: /vibeTrello/
+        # Las llamadas API tambien usan el prefijo publico y Nginx las reenvia al backend interno.
+        VITE_API_URL: /vibeTrello/api
     restart: unless-stopped
     depends_on:
       - backend
     labels:
       # Activa Traefik solo para este servicio publico.
       - "traefik.enable=true"
-      # Publica la web por HTTP cuando el navegador entra a http://servibecoding.
+      # Publica la web por HTTP cuando el navegador entra a http://servibecoding/vibeTrello.
       - "traefik.http.routers.vibetrello-frontend-http.entrypoints=http"
-      - "traefik.http.routers.vibetrello-frontend-http.rule=Host(`servibecoding`)"
+      - "traefik.http.routers.vibetrello-frontend-http.rule=Host(`servibecoding`) && PathPrefix(`/vibeTrello`)"
       - "traefik.http.routers.vibetrello-frontend-http.service=vibetrello-frontend"
       # El frontend sirve React con Nginx dentro del contenedor en el puerto 80.
       - "traefik.http.services.vibetrello-frontend.loadbalancer.server.port=80"
