@@ -61,11 +61,23 @@ export async function obtenerTableroCompleto(boardId) {
 
   const tarjetas = await consultar(
     `SELECT c.*, creador.name AS created_by_name, asignado.name AS assigned_to_name,
+       COALESCE(asignaciones.assigned_to_ids, ARRAY[]::integer[]) AS assigned_to_ids,
+       COALESCE(asignaciones.assigned_to_names, ARRAY[]::text[]) AS assigned_to_names,
+       COALESCE(asignaciones.assignees, '[]'::json) AS assignees,
        COALESCE(st.total, 0)::int AS subtasks_total,
        COALESCE(st.completed, 0)::int AS subtasks_completed
      FROM cards c
      JOIN users creador ON creador.id = c.created_by
      LEFT JOIN users asignado ON asignado.id = c.assigned_to
+     LEFT JOIN LATERAL (
+       SELECT
+         ARRAY_AGG(u.id ORDER BY ca.position, u.name) AS assigned_to_ids,
+         ARRAY_AGG(u.name ORDER BY ca.position, u.name) AS assigned_to_names,
+         JSON_AGG(JSON_BUILD_OBJECT('id', u.id, 'name', u.name) ORDER BY ca.position, u.name) AS assignees
+       FROM card_assignees ca
+       JOIN users u ON u.id = ca.user_id
+       WHERE ca.card_id = c.id
+     ) asignaciones ON true
      LEFT JOIN (
        SELECT card_id,
          COUNT(*) FILTER (WHERE deleted_at IS NULL) AS total,
@@ -180,4 +192,3 @@ async function buscarTablero(cliente, boardId) {
   if (!rows[0]) throw crearError('Tablero no encontrado', 404);
   return rows[0];
 }
-

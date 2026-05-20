@@ -75,10 +75,10 @@ export function BoardPage() {
     setSelectedCard(data.card);
   }
 
-  async function asignarTarjeta(assignedTo) {
+  async function asignarTarjeta(assignedToIds) {
     if (!selectedCard) return;
 
-    const data = await apiClient.assignCard(selectedCard.id, assignedTo);
+    const data = await apiClient.assignCard(selectedCard.id, assignedToIds);
     await cargarTablero();
     await abrirTarjeta(data.card.id);
   }

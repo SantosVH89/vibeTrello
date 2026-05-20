@@ -62,9 +62,9 @@ export const apiClient = {
   createCard: (listId, data) => api(`/lists/${listId}/cards`, { method: 'POST', body: JSON.stringify(data) }),
   updateCard: (cardId, data) => api(`/cards/${cardId}`, { method: 'PUT', body: JSON.stringify(data) }),
   moveCard: (cardId, data) => api(`/cards/${cardId}/move`, { method: 'PATCH', body: JSON.stringify(data) }),
-  assignCard: (cardId, assigned_to) => api(`/cards/${cardId}/assign`, {
+  assignCard: (cardId, assigned_to_ids) => api(`/cards/${cardId}/assign`, {
     method: 'PATCH',
-    body: JSON.stringify({ assigned_to })
+    body: JSON.stringify({ assigned_to_ids })
   }),
   completeCard: (cardId) => api(`/cards/${cardId}/complete`, { method: 'PATCH' }),
   reopenCard: (cardId) => api(`/cards/${cardId}/reopen`, { method: 'PATCH' }),

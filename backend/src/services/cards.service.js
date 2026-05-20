@@ -5,7 +5,8 @@ import { crearError } from '../utils/http-error.js';
 export async function crearTarjeta(userId, listId, datos) {
   return conTransaccion(async (cliente) => {
     const lista = await buscarLista(cliente, listId);
-    await validarUsuarioAsignado(cliente, datos.assigned_to);
+    const asignados = normalizarAsignados(datos.assigned_to_ids, datos.assigned_to);
+    await validarUsuariosAsignados(cliente, asignados);
 
     const { rows: posicionRows } = await cliente.query(
       `SELECT COALESCE(MAX(position), -1) + 1 AS siguiente
@@ -28,12 +29,15 @@ export async function crearTarjeta(userId, listId, datos) {
         datos.title,
         datos.description || null,
         userId,
-        datos.assigned_to || null,
+        asignados[0] || null,
         estado,
         posicionRows[0].siguiente,
         completedAt
       ]
     );
+
+    await guardarAsignadosTarjeta(cliente, rows[0].id, asignados);
+    const tarjetaCreada = await buscarTarjetaConAsignados(cliente, rows[0].id);
 
     await registrarActividad(cliente, {
       userId,
@@ -42,22 +46,34 @@ export async function crearTarjeta(userId, listId, datos) {
       entityId: rows[0].id,
       boardId: lista.board_id,
       cardId: rows[0].id,
-      newValue: rows[0]
+      newValue: tarjetaCreada
     });
 
-    return rows[0];
+    return tarjetaCreada;
   });
 }
 
 export async function obtenerDetalleTarjeta(cardId) {
   const [tarjeta] = await consultar(
     `SELECT c.*, b.name AS board_name, l.name AS list_name,
-       creador.name AS created_by_name, asignado.name AS assigned_to_name
+       creador.name AS created_by_name, asignado.name AS assigned_to_name,
+       COALESCE(asignaciones.assigned_to_ids, ARRAY[]::integer[]) AS assigned_to_ids,
+       COALESCE(asignaciones.assigned_to_names, ARRAY[]::text[]) AS assigned_to_names,
+       COALESCE(asignaciones.assignees, '[]'::json) AS assignees
      FROM cards c
      JOIN boards b ON b.id = c.board_id
      JOIN lists l ON l.id = c.list_id
      JOIN users creador ON creador.id = c.created_by
      LEFT JOIN users asignado ON asignado.id = c.assigned_to
+     LEFT JOIN LATERAL (
+       SELECT
+         ARRAY_AGG(u.id ORDER BY ca.position, u.name) AS assigned_to_ids,
+         ARRAY_AGG(u.name ORDER BY ca.position, u.name) AS assigned_to_names,
+         JSON_AGG(JSON_BUILD_OBJECT('id', u.id, 'name', u.name) ORDER BY ca.position, u.name) AS assignees
+       FROM card_assignees ca
+       JOIN users u ON u.id = ca.user_id
+       WHERE ca.card_id = c.id
+     ) asignaciones ON true
      WHERE c.id = $1 AND c.deleted_at IS NULL`,
     [cardId]
   );
@@ -166,31 +182,35 @@ export async function moverTarjeta(userId, cardId, targetListId, targetPosition)
   });
 }
 
-export async function asignarTarjeta(userId, cardId, assignedTo) {
+export async function asignarTarjeta(userId, cardId, assignedToIds) {
   return conTransaccion(async (cliente) => {
     const anterior = await buscarTarjeta(cliente, cardId);
-    await validarUsuarioAsignado(cliente, assignedTo);
+    const asignados = normalizarAsignados(assignedToIds);
+    await validarUsuariosAsignados(cliente, asignados);
 
-    const { rows } = await cliente.query(
+    await cliente.query(
       `UPDATE cards
        SET assigned_to = $1, updated_at = NOW()
        WHERE id = $2 AND deleted_at IS NULL
        RETURNING *`,
-      [assignedTo || null, cardId]
+      [asignados[0] || null, cardId]
     );
+
+    await guardarAsignadosTarjeta(cliente, cardId, asignados);
+    const actualizada = await buscarTarjetaConAsignados(cliente, cardId);
 
     await registrarActividad(cliente, {
       userId,
-      action: assignedTo ? 'tarea_asignada' : 'tarea_desasignada',
+      action: asignados.length ? 'tarea_asignada' : 'tarea_desasignada',
       entityType: 'card',
       entityId: cardId,
       boardId: anterior.board_id,
       cardId,
       oldValue: anterior,
-      newValue: rows[0]
+      newValue: actualizada
     });
 
-    return rows[0];
+    return actualizada;
   });
 }
 
@@ -270,13 +290,60 @@ async function buscarLista(cliente, listId) {
   return rows[0];
 }
 
-async function validarUsuarioAsignado(cliente, userId) {
-  if (!userId) return;
+function normalizarAsignados(assignedToIds = [], assignedTo = null) {
+  const ids = Array.isArray(assignedToIds) ? assignedToIds : [];
+  const todos = [...ids, assignedTo].filter(Boolean).map(Number);
+
+  // Evita duplicados manteniendo el orden elegido por la persona usuaria.
+  return [...new Set(todos)];
+}
+
+async function validarUsuariosAsignados(cliente, userIds) {
+  if (!userIds.length) return;
 
   const { rows } = await cliente.query(
-    'SELECT id FROM users WHERE id = $1 AND is_active = true',
-    [userId]
+    'SELECT id FROM users WHERE id = ANY($1::int[]) AND is_active = true',
+    [userIds]
   );
 
-  if (!rows[0]) throw crearError('El usuario asignado no existe o no esta activo');
+  if (rows.length !== userIds.length) {
+    throw crearError('Uno o mas usuarios asignados no existen o no estan activos');
+  }
+}
+
+async function guardarAsignadosTarjeta(cliente, cardId, userIds) {
+  // Reescribimos la lista completa para que quitar usuarios sea tan simple como no enviarlos.
+  await cliente.query('DELETE FROM card_assignees WHERE card_id = $1', [cardId]);
+
+  for (const [position, userId] of userIds.entries()) {
+    await cliente.query(
+      `INSERT INTO card_assignees (card_id, user_id, position)
+       VALUES ($1, $2, $3)`,
+      [cardId, userId, position]
+    );
+  }
+}
+
+async function buscarTarjetaConAsignados(cliente, cardId) {
+  const { rows } = await cliente.query(
+    `SELECT c.*,
+       COALESCE(asignaciones.assigned_to_ids, ARRAY[]::integer[]) AS assigned_to_ids,
+       COALESCE(asignaciones.assigned_to_names, ARRAY[]::text[]) AS assigned_to_names,
+       COALESCE(asignaciones.assignees, '[]'::json) AS assignees
+     FROM cards c
+     LEFT JOIN LATERAL (
+       SELECT
+         ARRAY_AGG(u.id ORDER BY ca.position, u.name) AS assigned_to_ids,
+         ARRAY_AGG(u.name ORDER BY ca.position, u.name) AS assigned_to_names,
+         JSON_AGG(JSON_BUILD_OBJECT('id', u.id, 'name', u.name) ORDER BY ca.position, u.name) AS assignees
+       FROM card_assignees ca
+       JOIN users u ON u.id = ca.user_id
+       WHERE ca.card_id = c.id
+     ) asignaciones ON true
+     WHERE c.id = $1 AND c.deleted_at IS NULL`,
+    [cardId]
+  );
+
+  if (!rows[0]) throw crearError('Tarea no encontrada', 404);
+  return rows[0];
 }

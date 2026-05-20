@@ -24,6 +24,7 @@ export function TaskCard({ card, listId, onOpen, onToggleComplete, onEdit, onDel
   }
 
   const completada = card.status === 'completed';
+  const asignados = nombresAsignados(card);
 
   return (
     <article
@@ -67,7 +68,7 @@ export function TaskCard({ card, listId, onOpen, onToggleComplete, onEdit, onDel
       <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-500">
         <span className="inline-flex min-w-0 items-center gap-1">
           <UserRound className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{card.assigned_to_name || 'Sin asignar'}</span>
+          <span className="truncate">{asignados}</span>
         </span>
 
         <span className="inline-flex items-center gap-1">
@@ -80,6 +81,8 @@ export function TaskCard({ card, listId, onOpen, onToggleComplete, onEdit, onDel
 }
 
 export function TaskCardPreview({ card }) {
+  const asignados = nombresAsignados(card);
+
   return (
     <article className="w-72 rounded border border-blue-500 bg-white p-3 shadow-2xl">
       <div className="flex items-start gap-2">
@@ -92,12 +95,17 @@ export function TaskCardPreview({ card }) {
       <div className="mt-3 flex items-center justify-between gap-2 text-xs text-slate-500">
         <span className="inline-flex min-w-0 items-center gap-1">
           <UserRound className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{card.assigned_to_name || 'Sin asignar'}</span>
+          <span className="truncate">{asignados}</span>
         </span>
         <span>{card.subtasks_total ? `${card.subtasks_completed}/${card.subtasks_total}` : '0/0'}</span>
       </div>
     </article>
   );
+}
+
+function nombresAsignados(card) {
+  if (card.assigned_to_names?.length) return card.assigned_to_names.join(', ');
+  return card.assigned_to_name || 'Sin asignar';
 }
 
 function IconButton({ title, onClick, children }) {

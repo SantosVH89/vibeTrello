@@ -10,10 +10,15 @@ import {
 import { idNumerico, posicionValida, textoObligatorio } from '../utils/validaciones.js';
 
 export async function createCard(req, res) {
+  const assignedToIds = Array.isArray(req.body.assigned_to_ids)
+    ? req.body.assigned_to_ids.map((id) => idNumerico(id, 'assigned_to_ids'))
+    : [];
+
   const card = await crearTarjeta(req.usuario.id, idNumerico(req.params.listId, 'listId'), {
     title: textoObligatorio(req.body.title, 'title'),
     description: req.body.description || null,
-    assigned_to: req.body.assigned_to || null
+    assigned_to: req.body.assigned_to || null,
+    assigned_to_ids: assignedToIds
   });
   res.status(201).json({ card });
 }
@@ -41,8 +46,11 @@ export async function moveCard(req, res) {
 }
 
 export async function assignCard(req, res) {
-  const assignedTo = req.body.assigned_to ? idNumerico(req.body.assigned_to, 'assigned_to') : null;
-  res.json({ card: await asignarTarjeta(req.usuario.id, idNumerico(req.params.id), assignedTo) });
+  const asignados = Array.isArray(req.body.assigned_to_ids)
+    ? req.body.assigned_to_ids.map((id) => idNumerico(id, 'assigned_to_ids'))
+    : (req.body.assigned_to ? [idNumerico(req.body.assigned_to, 'assigned_to')] : []);
+
+  res.json({ card: await asignarTarjeta(req.usuario.id, idNumerico(req.params.id), asignados) });
 }
 
 export async function completeCard(req, res) {
@@ -56,4 +64,3 @@ export async function reopenCard(req, res) {
 export async function deleteCard(req, res) {
   res.json({ card: await eliminarTarjeta(req.usuario.id, idNumerico(req.params.id)) });
 }
-

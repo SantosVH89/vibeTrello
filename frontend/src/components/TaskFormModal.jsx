@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 import { FormMessage } from './FormMessage.jsx';
 
 export function TaskFormModal({ open, listName, users, onClose, onSubmit }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [assignedTo, setAssignedTo] = useState('');
+  const [assignedToIds, setAssignedToIds] = useState(['']);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -14,7 +14,7 @@ export function TaskFormModal({ open, listName, users, onClose, onSubmit }) {
     if (!open) return;
     setTitle('');
     setDescription('');
-    setAssignedTo('');
+    setAssignedToIds(['']);
     setError('');
   }, [open]);
 
@@ -29,7 +29,7 @@ export function TaskFormModal({ open, listName, users, onClose, onSubmit }) {
       await onSubmit({
         title,
         description,
-        assigned_to: assignedTo ? Number(assignedTo) : null
+        assigned_to_ids: limpiarAsignados(assignedToIds)
       });
       onClose();
     } catch (err) {
@@ -74,19 +74,53 @@ export function TaskFormModal({ open, listName, users, onClose, onSubmit }) {
             />
           </label>
 
-          <label className="block">
-            <span className="text-sm font-medium text-slate-700">Asignar a</span>
-            <select
-              value={assignedTo}
-              onChange={(event) => setAssignedTo(event.target.value)}
-              className="mt-1 w-full rounded border border-linea bg-white px-3 py-2 outline-none focus:border-acento"
-            >
-              <option value="">Sin asignar</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>{user.name}</option>
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-slate-700">Asignar a</span>
+              <button
+                type="button"
+                onClick={() => setAssignedToIds([...assignedToIds, ''])}
+                className="inline-flex h-8 w-8 items-center justify-center rounded border border-blue-200 text-blue-700 hover:bg-blue-50"
+                title="Anadir otra persona"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-2 space-y-2">
+              {assignedToIds.map((assignedTo, index) => (
+                <div key={index} className="flex gap-2">
+                  <select
+                    value={assignedTo}
+                    onChange={(event) => actualizarAsignado(index, event.target.value)}
+                    className="min-w-0 flex-1 rounded border border-linea bg-white px-3 py-2 outline-none focus:border-acento"
+                  >
+                    <option value="">Sin asignar</option>
+                    {users.map((user) => (
+                      <option
+                        key={user.id}
+                        value={user.id}
+                        disabled={assignedToIds.includes(String(user.id)) && assignedTo !== String(user.id)}
+                      >
+                        {user.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  {assignedToIds.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => quitarAsignado(index)}
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded border border-red-200 text-red-700 hover:bg-red-50"
+                      title="Quitar persona"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
               ))}
-            </select>
-          </label>
+            </div>
+          </div>
 
           <FormMessage>{error}</FormMessage>
         </div>
@@ -103,5 +137,19 @@ export function TaskFormModal({ open, listName, users, onClose, onSubmit }) {
       </form>
     </div>
   );
+
+  function actualizarAsignado(index, value) {
+    const nuevosAsignados = [...assignedToIds];
+    nuevosAsignados[index] = value;
+    setAssignedToIds(nuevosAsignados);
+  }
+
+  function quitarAsignado(index) {
+    const nuevosAsignados = assignedToIds.filter((_, posicion) => posicion !== index);
+    setAssignedToIds(nuevosAsignados.length ? nuevosAsignados : ['']);
+  }
 }
 
+function limpiarAsignados(assignedToIds) {
+  return [...new Set(assignedToIds.filter(Boolean).map(Number))];
+}
