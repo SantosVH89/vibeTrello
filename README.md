@@ -49,5 +49,6 @@ El proyecto incluye despliegue Docker Compose para servidor:
 - `.env.production.example`: variables que debes crear en Dokploy.
 - `Analisis/guia_despliegue_dokploy.md`: guia anterior de Dokploy.
 - `Analisis/guia_despliegue_coolify.md`: guia no tecnica para Coolify.
+- `Analisis/contexto_infraestructura_y_nuevas_webapps.md`: memoria de infraestructura, Coolify, Traefik y checklist para nuevas webapps.
 
 En Coolify, el dominio debe apuntar al servicio `frontend` y al puerto interno `80`.
