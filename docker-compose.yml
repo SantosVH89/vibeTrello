@@ -62,16 +62,9 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
-    networks:
-      # Mantiene la red propia del proyecto para hablar con backend.
-      - default
-      # Conecta el frontend al proxy de Coolify para recibir trafico web.
-      - coolify
     labels:
       # Activa Traefik solo para este servicio publico.
       - "traefik.enable=true"
-      # Indica a Traefik que debe llegar al frontend usando la red de Coolify.
-      - "traefik.docker.network=coolify"
       # Publica la web por HTTP cuando el navegador entra a http://servibecoding.
       - "traefik.http.routers.vibetrello-frontend-http.entrypoints=http"
       - "traefik.http.routers.vibetrello-frontend-http.rule=Host(`servibecoding`)"
@@ -83,8 +76,3 @@ services:
 
 volumes:
   postgres_data:
-
-networks:
-  coolify:
-    # Esta red ya existe porque la crea Coolify para su proxy.
-    external: true
