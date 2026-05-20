@@ -4,12 +4,15 @@ import { apiClient } from '../api/client.js';
 import { AppShell } from '../components/AppShell.jsx';
 import { BoardCard } from '../components/BoardCard.jsx';
 import { FormMessage } from '../components/FormMessage.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export function DashboardPage() {
+  const { user } = useAuth();
   const [boards, setBoards] = useState({ active: [], completed: [] });
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+  const puedeEliminarTableros = user?.role === 'admin';
 
   useEffect(() => {
     cargarTableros();
@@ -43,6 +46,17 @@ export function DashboardPage() {
     await cargarTableros();
   }
 
+  async function eliminarTablero(board) {
+    setError('');
+
+    try {
+      await apiClient.deleteBoard(board.id);
+      await cargarTableros();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <AppShell>
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -71,15 +85,28 @@ export function DashboardPage() {
         </form>
 
         <div className="space-y-8">
-          <BoardSection title="Trabajo activo" boards={boards.active} onToggle={alternarEstado} />
-          <BoardSection title="Trabajo completado" boards={boards.completed} onToggle={alternarEstado} muted />
+          <BoardSection
+            title="Trabajo activo"
+            boards={boards.active}
+            onToggle={alternarEstado}
+            onDelete={eliminarTablero}
+            canDelete={puedeEliminarTableros}
+          />
+          <BoardSection
+            title="Trabajo completado"
+            boards={boards.completed}
+            onToggle={alternarEstado}
+            onDelete={eliminarTablero}
+            canDelete={puedeEliminarTableros}
+            muted
+          />
         </div>
       </div>
     </AppShell>
   );
 }
 
-function BoardSection({ title, boards, onToggle, muted = false }) {
+function BoardSection({ title, boards, onToggle, onDelete, canDelete, muted = false }) {
   return (
     <section>
       <div className="mb-3 flex items-center justify-between">
@@ -89,7 +116,15 @@ function BoardSection({ title, boards, onToggle, muted = false }) {
 
       {boards.length ? (
         <div className={`grid gap-3 md:grid-cols-2 xl:grid-cols-3 ${muted ? 'opacity-80' : ''}`}>
-          {boards.map((board) => <BoardCard key={board.id} board={board} onToggle={onToggle} />)}
+          {boards.map((board) => (
+            <BoardCard
+              key={board.id}
+              board={board}
+              onToggle={onToggle}
+              onDelete={onDelete}
+              canDelete={canDelete}
+            />
+          ))}
         </div>
       ) : (
         <div className="rounded border border-dashed border-linea bg-white px-4 py-8 text-center text-sm text-slate-500">

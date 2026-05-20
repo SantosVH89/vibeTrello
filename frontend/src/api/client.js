@@ -50,6 +50,7 @@ export const apiClient = {
   getBoard: (id) => api(`/boards/${id}`),
   completeBoard: (id) => api(`/boards/${id}/complete`, { method: 'PATCH' }),
   reopenBoard: (id) => api(`/boards/${id}/reopen`, { method: 'PATCH' }),
+  deleteBoard: (id) => api(`/boards/${id}`, { method: 'DELETE' }),
   createList: (boardId, data) => api(`/boards/${boardId}/lists`, { method: 'POST', body: JSON.stringify(data) }),
   updateList: (listId, data) => api(`/lists/${listId}`, { method: 'PUT', body: JSON.stringify(data) }),
   reorderLists: (boardId, orderedIds) => api(`/boards/${boardId}/lists/reorder`, {
