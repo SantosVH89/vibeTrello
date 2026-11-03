@@ -1,5 +1,5 @@
 # Fase 1: construye los archivos estaticos de React/Vite.
-FROM node:24-alpine AS build
+FROM node:24.22.2-alpine AS build
 
 WORKDIR /app
 

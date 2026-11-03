@@ -1,5 +1,5 @@
 # Imagen ligera de Node para ejecutar el backend Express en produccion.
-FROM node:24-alpine
+FROM node:24.22.2-alpine
 
 # Carpeta interna donde vivira el backend dentro del contenedor.
 WORKDIR /app
